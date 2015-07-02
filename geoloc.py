@@ -33,12 +33,12 @@ def quickload():
     :param data_dir: directory containing files
     '''
     data_dir = "data"
-    load_db("geoip", data_dir + "/GeoIP.dat")
-    load_db("ip2location", data_dir + "/IP-COUNTRY.bin")
-    load_db("dbip", data_dir + "/dbip-country-2015-07.csv")
-    load_db("ipligence", data_dir + "/ipligence-lite.csv")
+    load("geoip", data_dir + "/GeoIP.dat")
+    load("ip2location", data_dir + "/IP-COUNTRY.bin")
+    load("dbip", data_dir + "/dbip-country-2015-07.csv")
+    load("ipligence", data_dir + "/ipligence-lite.csv")
 
-def load_db(db_name, db_fpath):
+def load(db_name, db_fpath):
     '''
     Load a geolocation service.
     :param db_name: name of the geolocation service.
@@ -59,6 +59,11 @@ def load_db(db_name, db_fpath):
     global available_dbs
     available_dbs = [x for x in _dbs.keys() if x is not None]
 
+def clear():
+    global _dbs, available_dbs
+    _dbs = { k : None for k in _dbs }
+    available_dbs = []
+
 def query(to_query, ip_addr, db_name):
     '''
     Query a given database for a property of the address. Use for making lots of
@@ -69,7 +74,7 @@ def query(to_query, ip_addr, db_name):
     :return: str result of the query.
     '''
     if to_query not in supported_queries: raise ValueError("Query not supported for {}".format(to_query))
-    if to_query == "country_code": return country_code(ip_addr, db_name)
+    if to_query == "country_code": return cc(ip_addr, db_name)
     else: raise ValueError("Could not perform {} query in {} database".format(to_query, db_name))
 
 def query_all(to_query, ip_addr, filter_nones=False):
@@ -83,7 +88,7 @@ def query_all(to_query, ip_addr, filter_nones=False):
     if not filter_nones: return results
     else: return { k : v for k,v in results.items() if v is not None }
 
-def country_code(ip_addr, db_name):
+def cc(ip_addr, db_name):
     '''
     Query the country code of the ip address from the specified database.
     :param ip_addr: ip address to query
@@ -102,7 +107,7 @@ def country_code(ip_addr, db_name):
     elif db_name == 'ipligence': _dbs[db_name].country_code(ip_addr)
     else: raise ValueError("error querying {} db".format(db_name))
 
-def country_code_all(ip_addr, filter_nones=False):
+def cc_all(ip_addr, filter_nones=False):
     '''
     Query all databases for the country code of the ip address.
     :param ip_addr: ip address to look up
@@ -110,7 +115,7 @@ def country_code_all(ip_addr, filter_nones=False):
                 which map to None (these mean the database didn't have an entry for that ip)
     :return: { str : str }, a mapping of database -> result
     '''
-    results = { db : country_code(ip_addr, db) for db in available_dbs }
+    results = { db : cc(ip_addr, db) for db in available_dbs }
     if not filter_nones: return results
     else: return { k : v for k,v in results.items() if v is not None }
 
@@ -190,7 +195,7 @@ class IPligence(object):
             # store the ending interval for last range
             me.mapping[end] = None
 
-    def country_code(me, ip_addr):
+    def cc(me, ip_addr):
         '''
         Look up country code of an address.
         :param ip_addr: ip address to look up.
